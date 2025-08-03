@@ -7,7 +7,6 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import apiBissaKerja from "@/lib/api-bissa-kerja";
-import api from "@/lib/axios";
 import ProfileInformationSkeleton from "@/skeleton/ProfileInformationSkeleton";
 
 type DisabilitasItem = {
@@ -109,7 +108,7 @@ export default function UserProfileCard() {
   const fetchUserProfile = async () => {
     try {
       // console.log("📡 Fetching user profile...");
-      const userData = await api.get("user");
+      const userData = await apiBissaKerja.get("user");
       const response = await apiBissaKerja.get(
         `/user/${userData.data.user.id}`
       );

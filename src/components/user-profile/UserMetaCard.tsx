@@ -8,6 +8,7 @@ import Label from "../form/Label";
 import Image from "next/image";
 import api from "@/lib/axios";
 import ProfileCardSkeleton from "@/skeleton/ProfileCardSkeleton";
+import apiBissaKerja from "@/lib/api-bissa-kerja";
 
 interface User {
   id: number;
@@ -76,7 +77,7 @@ export default function UserProfileCard() {
 
       // console.log("🔄 Fetching profile data...");
 
-      const response = await api.get("user");
+      const response = await apiBissaKerja.get("user");
 
       // console.log("📥 Profile response:", response.data);
 
@@ -190,7 +191,7 @@ export default function UserProfileCard() {
         avatar: undefined,
       }));
 
-      const response = await api.patch<ApiResponse<{ user: User }>>(
+      const response = await apiBissaKerja.patch<ApiResponse<{ user: User }>>(
         "/profile/update-avatar",
         {
           avatar: avatarPreview, // Send base64 data
@@ -404,7 +405,7 @@ export default function UserProfileCard() {
   // Get avatar source
   const getAvatarSrc = () => {
     if (avatarPreview) return avatarPreview;
-    if (user?.avatar) return user.avatar;
+    if (user?.avatar) return user.avatar + "&length=2";
     return "/images/user/owner.jpg"; // Default fallback
   };
 

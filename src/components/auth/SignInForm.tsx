@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import React, { ChangeEvent, FormEvent, useState } from "react";
 import { useUser } from "@/context/UserContext";
-import { headers } from "next/headers";
 import apiBissaKerja from "@/lib/api-bissa-kerja";
 
 interface FormData {
@@ -97,7 +96,7 @@ export default function SignInForm() {
       };
 
       // Call login API
-      const loginResponse = await api.post("/login", payload);
+      const loginResponse = await apiBissaKerja.post("/login", payload);
 
       // Handle successful login
       if (loginResponse.data.success || loginResponse.status === 200) {

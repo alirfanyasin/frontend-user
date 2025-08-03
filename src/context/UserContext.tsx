@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "@/lib/axios";
 import Cookies from "js-cookie";
+import apiBissaKerja from "@/lib/api-bissa-kerja";
 
 type User = {
   name: string;
@@ -44,7 +45,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoading(true);
     try {
-      const response = await api.get("/user");
+      const response = await apiBissaKerja.get("/user");
 
       const mergedUser = {
         ...response.data.user,
@@ -74,7 +75,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // Kirim request logout ke backend
-      await api.post("/logout");
+      await apiBissaKerja.post("/logout");
     } catch (error: any) {
       console.log(
         "Gagal logout dari server:",

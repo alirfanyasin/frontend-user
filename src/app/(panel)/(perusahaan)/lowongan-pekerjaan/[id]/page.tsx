@@ -301,7 +301,7 @@ export default function JobDetailPage() {
   // Loading state with skeleton
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen ">
         <PageBreadcrumb pageTitle="Detail Lowongan" />
         <div className="w-full mx-auto">
           <div className="animate-pulse space-y-8">
@@ -419,7 +419,7 @@ export default function JobDetailPage() {
                   <img
                     src={
                       job.perusahaan_profile?.logo
-                        ? `http://localhost:8001/storage/${job.perusahaan_profile.logo}`
+                        ? `http://localhost:8000/storage/${job.perusahaan_profile.logo}`
                         : "/images/company-placeholder.png"
                     }
                     alt={`Logo ${

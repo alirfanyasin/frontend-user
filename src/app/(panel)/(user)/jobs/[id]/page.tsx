@@ -630,7 +630,7 @@ export default function JobDetailPage() {
                   <img
                     src={
                       job.perusahaan_profile.logo
-                        ? `http://localhost:8001/storage/${job.perusahaan_profile.logo}`
+                        ? `http://localhost:8000/storage/${job.perusahaan_profile.logo}`
                         : "/images/company-placeholder.png"
                     }
                     alt={`Logo ${job.perusahaan_profile.nama_perusahaan}`}

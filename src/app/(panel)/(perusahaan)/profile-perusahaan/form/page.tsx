@@ -181,7 +181,7 @@ export default function FormLengkapiDataPerusahaan() {
 
   const loadUserData = async () => {
     try {
-      const response = await api.get("/user");
+      const response = await apiBissaKerja.get("/user");
       const user = response.data.user;
       setUserData(user);
 

@@ -325,6 +325,7 @@ export default function LowonganPekerjaanPage() {
         response = await apiBissaKerja.get<CompanyProfileResponse>(
           "/company/profile"
         );
+        console.log("gagal ngembil data profile");
       } catch (err) {
         // Fallback to alternative endpoint
         response = await apiBissaKerja.get<CompanyProfileResponse>(
@@ -643,7 +644,7 @@ export default function LowonganPekerjaanPage() {
                               <img
                                 src={
                                   job.perusahaan_profile.logo
-                                    ? `http://localhost:8001/storage/${job.perusahaan_profile.logo}`
+                                    ? `http://localhost:8000/storage/${job.perusahaan_profile.logo}`
                                     : "/images/company-placeholder.png"
                                 }
                                 alt={`Logo perusahaan ${job.perusahaan_profile.nama_perusahaan}`}

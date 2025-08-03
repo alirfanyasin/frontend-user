@@ -72,7 +72,7 @@ export default function UserDropdown() {
           <Image
             width={44}
             height={44}
-            src={user.avatar}
+            src={user.avatar + "&length=2"}
             alt="User"
             className="w-full h-full object-cover"
           />

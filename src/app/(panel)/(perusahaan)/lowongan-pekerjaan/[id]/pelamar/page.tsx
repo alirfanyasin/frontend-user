@@ -626,7 +626,7 @@ export default function ViewApplicantsPage() {
   };
 
   const handleFileView = (fileUrl: string, fileName: string) => {
-    const baseUrl = "http://localhost:8001/storage/";
+    const baseUrl = "http://localhost:8000/storage/";
     const fullUrl = fileUrl.startsWith("http")
       ? fileUrl
       : `${baseUrl}${fileUrl}`;
@@ -640,7 +640,7 @@ export default function ViewApplicantsPage() {
   };
 
   const handleFileDownload = (fileUrl: string, fileName: string) => {
-    const baseUrl = "http://localhost:8001/storage/";
+    const baseUrl = "http://localhost:8000/storage/";
     const fullUrl = fileUrl.startsWith("http")
       ? fileUrl
       : `${baseUrl}${fileUrl}`;

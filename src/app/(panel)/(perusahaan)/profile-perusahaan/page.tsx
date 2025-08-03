@@ -210,7 +210,7 @@ export default function ProfilePerusahaan() {
 
       // Load user data and company profile in parallel
       const [userResponse, companyResponse] = await Promise.all([
-        api.get("/user"),
+        apiBissaKerja.get("/user"),
         apiBissaKerja
           .get<ApiResponse<CompanyData>>("perusahaan/profile")
           .catch((err) => {
@@ -253,7 +253,7 @@ export default function ProfilePerusahaan() {
   };
 
   const getDisplayLogo = () => {
-    if (companyData?.logo_url) return companyData.logo_url;
+    // if (companyData?.logo_url) return companyData.logo_url;
     if (userData?.avatar) return userData.avatar;
     return null;
   };

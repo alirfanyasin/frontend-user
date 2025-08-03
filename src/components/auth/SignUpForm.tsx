@@ -7,6 +7,7 @@ import Link from "next/link";
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import Cookies from "js-cookie";
 import api from "@/lib/axios";
+import apiBissaKerja from "@/lib/api-bissa-kerja";
 
 // Types
 interface FormData {
@@ -139,7 +140,7 @@ export default function SignUpForm() {
 
       console.log("Sending registration payload:", payload);
 
-      const response = await api.post(`/register`, payload);
+      const response = await apiBissaKerja.post(`/register`, payload);
 
       console.log("Registration response:", response);
 
