@@ -1,6 +1,6 @@
 import GridShape from "@/components/common/GridShape";
 import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { ThemeProvider } from "@/context/ThemeContext";
 import Image from "next/image";
@@ -15,10 +15,20 @@ export default function AuthLayout({
   return (
     <div className="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0">
       <ThemeProvider>
-        <div className="relative flex lg:flex-row w-full h-screen justify-center flex-col  dark:bg-gray-900 sm:p-0">
+        <div className="relative flex lg:flex-row w-full h-screen justify-center flex-col dark:bg-gray-900 sm:p-0">
           {children}
-          <div className="lg:w-1/2 w-full h-full bg-brand-950 dark:bg-white/5 lg:grid items-center hidden">
-            <div className="relative items-center justify-center  flex z-1">
+          <div className="lg:w-1/2 w-full h-full lg:grid items-center hidden relative">
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: "url(/images/disabilitas.jpg)", // Perbaikan sintaks
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="absolute inset-0 bg-brand-950/60 dark:bg-gray-900/60"></div>
+            </div>
+            <div className="relative items-center justify-center flex z-10">
               {/* <!-- ===== Common Grid Shape Start ===== --> */}
               <GridShape />
               <div className="flex flex-col items-center max-w-xs">
@@ -26,12 +36,12 @@ export default function AuthLayout({
                   <Image
                     width={231}
                     height={48}
-                    src="./images/logo/auth-logo.svg"
+                    src="/images/logo/jatimbissa.png"
                     alt="Logo"
                   />
                 </Link>
-                <p className="text-center text-gray-400 dark:text-white/60">
-                  Free and Open-Source Tailwind CSS Admin Dashboard Template
+                <p className="text-center text-white dark:text-white/60">
+                  Membuka Peluang, Menghapus Batas
                 </p>
               </div>
             </div>

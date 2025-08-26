@@ -23,7 +23,7 @@ export default function RootLayout({
             <UserProvider>{children}</UserProvider>
           </SidebarProvider>
         </ThemeProvider>
-        <AccessibilityOverlay />
+        {/* <AccessibilityOverlay /> */}
       </body>
     </html>
   );

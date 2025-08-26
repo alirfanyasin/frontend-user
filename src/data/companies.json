@@ -1,38 +1,38 @@
 [
   {
     "id": 1,
-    "name": "PT Tech Inklusif",
+    "name": "PT Bank Central Asia Tbk",
     "location": "Jakarta Selatan",
-    "logo": "TI"
+    "logo": "BCA"
   },
   {
     "id": 2,
-    "name": "CV Data Solutions",
+    "name": "PT Telkom Indonesia Tbk",
     "location": "Bandung",
-    "logo": "DS"
+    "logo": "TLKM"
   },
   {
     "id": 3,
-    "name": "PT Layanan Prima",
+    "name": "PT Pertamina (Persero)",
     "location": "Surabaya",
-    "logo": "LP"
+    "logo": "PERTA"
   },
   {
     "id": 4,
-    "name": "Studio Kreatif",
+    "name": "PT Unilever Indonesia Tbk",
     "location": "Yogyakarta",
-    "logo": "SK"
+    "logo": "UNVR"
   },
   {
     "id": 5,
-    "name": "PT Keuangan Sejahtera",
+    "name": "PT Bank Mandiri Tbk",
     "location": "Medan",
-    "logo": "KS"
+    "logo": "BMRI"
   },
   {
     "id": 6,
-    "name": "Media Digital",
+    "name": "PT Astra International Tbk",
     "location": "Bali",
-    "logo": "MD"
+    "logo": "ASII"
   }
 ]
