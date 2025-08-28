@@ -1,10 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import Image from "next/image"; // Use Next.js Image component
+import Image from "next/image";
 import Navbar from "@/components/landing-page/Navbar";
 import Footer from "@/components/landing-page/Footer";
 import JobCard from "@/components/company/JobCard";
-import companiesData from "@/data/companies.json";
 import testimonialsData from "@/data/testimonials.json";
 import apiBissaKerja from "@/lib/api-bissa-kerja";
 import {
@@ -18,14 +17,13 @@ import {
   UserPlus,
   Search,
   Send,
-  Clock,
-  Heart,
   FileX,
   RefreshCw,
+  Building,
 } from "lucide-react";
 import axios, { AxiosError } from "axios";
 
-// Define TypeScript interfaces for type safety
+// Define TypeScript interfaces
 interface DisabilitasType {
   id: number;
   kategori_disabilitas: string;
@@ -41,12 +39,11 @@ interface DisabilitasType {
 interface PerusahaanProfile {
   id: number;
   logo: string | null;
+  logo_url: string | null; // Added for full logo URL from backend
   nama_perusahaan: string;
   industri: string;
   tahun_berdiri: string;
   jumlah_karyawan: string;
-  province_id: string;
-  regencie_id: string;
   deskripsi: string;
   no_telp: string;
   link_website: string;
@@ -67,6 +64,22 @@ interface PerusahaanProfile {
   user_id: number;
   created_at: string;
   updated_at: string;
+}
+
+interface Company {
+  id: number;
+  companyName: string;
+  email: string;
+  phone: string;
+  address: string;
+  description?: string;
+  status: "active" | "inactive" | "pending";
+  createdAt?: string;
+  employeeCount?: string;
+  logo?: string;
+  industri?: string;
+  tahunBerdiri?: string;
+  website?: string;
 }
 
 interface JobVacancy {
@@ -91,13 +104,6 @@ interface JobVacancy {
   updated_at?: string;
 }
 
-interface Company {
-  id: number;
-  name: string;
-  location: string;
-  logo: string;
-}
-
 interface Testimonial {
   name: string;
   role: string;
@@ -106,11 +112,22 @@ interface Testimonial {
   avatar: string;
 }
 
-interface ApiResponse {
+interface Pagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+interface ApiResponse<T> {
   success: boolean;
   message: string;
-  data: JobVacancy[];
+  data: T[];
+  pagination?: Pagination;
 }
+
+// Base URL for images
+const BASE_IMAGE_URL = "http://localhost:8000/storage";
 
 // Skeleton Component for JobCard
 const JobCardSkeleton = () => (
@@ -156,7 +173,23 @@ const JobCardSkeleton = () => (
   </article>
 );
 
-// Empty State Component
+// Skeleton Component for CompanyCard
+const CompanyCardSkeleton = () => (
+  <article className="bg-slate-50 dark:bg-slate-800 rounded-xl p-8 shadow-sm border border-slate-200 dark:border-slate-700">
+    <div className="flex items-center space-x-4 mb-6">
+      <div className="animate-pulse bg-slate-200 dark:bg-slate-700 w-16 h-16 rounded-lg"></div>
+      <div className="flex-1 space-y-2">
+        <div className="animate-pulse bg-slate-200 dark:bg-slate-700 h-5 rounded w-3/4" />
+        <div className="animate-pulse bg-slate-200 dark:bg-slate-700 h-4 rounded w-1/2" />
+      </div>
+    </div>
+    <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+      <div className="animate-pulse bg-slate-200 dark:bg-slate-700 h-4 rounded w-24" />
+    </div>
+  </article>
+);
+
+// Empty State Component for Jobs
 const EmptyState = ({ onRefresh }: { onRefresh: () => void }) => (
   <div className="flex flex-col items-center justify-center py-16 px-4">
     <div className="text-center max-w-md">
@@ -178,6 +211,28 @@ const EmptyState = ({ onRefresh }: { onRefresh: () => void }) => (
   </div>
 );
 
+// Empty State Component for Companies
+const CompanyEmptyState = ({ onRefresh }: { onRefresh: () => void }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-4">
+    <div className="text-center max-w-md">
+      <FileX className="w-20 h-20 text-gray-400 dark:text-gray-600 mx-auto mb-6" />
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        Tidak Ada Perusahaan Tersedia
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm leading-relaxed">
+        Saat ini belum ada data perusahaan yang tersedia. Silakan coba lagi nanti atau hubungi administrator.
+      </p>
+      <button
+        onClick={onRefresh}
+        className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        <RefreshCw className="w-4 h-4 mr-2" />
+        Muat Ulang
+      </button>
+    </div>
+  </div>
+);
+
 const LandingPage = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
@@ -185,13 +240,48 @@ const LandingPage = () => {
   const [jobs, setJobs] = useState<JobVacancy[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [errorJobs, setErrorJobs] = useState<string | null>(null);
-  const companies: Company[] = companiesData;
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [errorCompanies, setErrorCompanies] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const testimonials: Testimonial[] = testimonialsData;
 
+  // Transform API response to Company interface
+  const transformApiResponseToCompany = (
+    apiData: PerusahaanProfile[]
+  ): Company[] => {
+    return apiData.map((item) => ({
+      id: item.id,
+      companyName: item.nama_perusahaan || "Tidak Diketahui",
+      email: item.user?.email || "tidak tersedia",
+      phone: item.no_telp || "Tidak tersedia",
+      address: item.alamat_lengkap || "Tidak tersedia",
+      description: item.deskripsi,
+      status:
+        item.status_verifikasi === "terverifikasi"
+          ? "active"
+          : item.status_verifikasi === "ditolak"
+          ? "inactive"
+          : "pending",
+      createdAt: item.created_at
+        ? new Date(item.created_at).toLocaleDateString("id-ID")
+        : undefined,
+      employeeCount: item.jumlah_karyawan,
+      logo: item.logo_url || item.logo,
+      industri: item.industri,
+      tahunBerdiri: item.tahun_berdiri,
+      website: item.link_website,
+    }));
+  };
+
   // Helper function to get company logo URL
-  const getCompanyLogoUrl = (logo: string | null, companyName: string): string => {
+  const getCompanyLogoUrl = (logo: string | null | undefined, companyName: string): string => {
     if (logo && logo.trim() !== "") {
-      return `${process.env.NEXT_PUBLIC_BASE_URL}/storage/${logo}`;
+      if (logo.startsWith("http")) {
+        return logo;
+      }
+      return `${BASE_IMAGE_URL}/${logo}`;
     }
     const encodedName = encodeURIComponent(companyName);
     return `https://ui-avatars.com/api/?name=${encodedName}&length=2`;
@@ -204,23 +294,14 @@ const LandingPage = () => {
       setErrorJobs(null);
 
       let response;
-      const possibleEndpoints = [
-        "/job-vacancies",
-        "/lowongan-pekerjaan",
-        "/public/job-vacancies",
-        "/admin/job-vacancies",
-        "/company/job-vacancies/all",
-        "/api/job-vacancies",
-        "/jobs",
-        "/job-vacancies/all",
-      ];
+      const possibleEndpoints = ["/jobs"];
 
       let lastError = null;
 
       for (const endpoint of possibleEndpoints) {
         try {
           console.log(`Trying endpoint: ${endpoint}`);
-          response = await apiBissaKerja.get<ApiResponse>(endpoint);
+          response = await apiBissaKerja.get<ApiResponse<JobVacancy>>(endpoint);
           console.log(`Success with endpoint: ${endpoint}`, response.data);
           break;
         } catch (err) {
@@ -252,12 +333,11 @@ const LandingPage = () => {
             perusahaan_profile: {
               id: 1,
               logo: null,
+              logo_url: null,
               nama_perusahaan: "Tech Innovate",
               industri: "Technology",
               tahun_berdiri: "2020",
               jumlah_karyawan: "50-100",
-              province_id: "1",
-              regencie_id: "1",
               deskripsi: "Perusahaan teknologi modern",
               no_telp: "021-1234567",
               link_website: "https://techinnovate.com",
@@ -274,7 +354,7 @@ const LandingPage = () => {
               twitter: null,
               youtube: null,
               tiktok: null,
-              status_verifikasi: "verified",
+              status_verifikasi: "terverifikasi",
               user_id: 1,
               created_at: "2024-01-01",
               updated_at: "2024-01-01",
@@ -314,12 +394,11 @@ const LandingPage = () => {
             perusahaan_profile: {
               id: 2,
               logo: null,
+              logo_url: null,
               nama_perusahaan: "Digital Solutions",
               industri: "Software Development",
               tahun_berdiri: "2019",
               jumlah_karyawan: "10-50",
-              province_id: "2",
-              regencie_id: "2",
               deskripsi: "Solusi digital untuk bisnis",
               no_telp: "022-9876543",
               link_website: "https://digitalsolutions.com",
@@ -381,8 +460,101 @@ const LandingPage = () => {
     }
   };
 
+  // Fetch companies from backend with pagination
+  const fetchCompanies = async (page: number = 1): Promise<void> => {
+    try {
+      setLoadingCompanies(true);
+      setErrorCompanies(null);
+
+      const response = await apiBissaKerja.get<ApiResponse<PerusahaanProfile>>(
+        `/companies`
+      );
+
+      console.log("Fetched Companies:", response.data);
+
+      if (
+        response.data &&
+        response.data.success &&
+        Array.isArray(response.data.data)
+      ) {
+        const transformedCompanies = transformApiResponseToCompany(response.data.data);
+        setCompanies(transformedCompanies);
+        setCurrentPage(response.data.pagination?.current_page || 1);
+        setLastPage(response.data.pagination?.last_page || 1);
+      } else {
+        console.warn("Unexpected data format:", response.data);
+        setCompanies([]);
+      }
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        if (axiosError.response?.status === 404) {
+          setErrorCompanies("Data perusahaan tidak ditemukan.");
+        } else if (axiosError.response?.status === 500) {
+          setErrorCompanies("Server sedang mengalami gangguan. Silakan coba lagi nanti.");
+        } else if (axiosError.response?.status === 401) {
+          setErrorCompanies("Sesi Anda telah berakhir. Silakan login kembali.");
+        } else if (axiosError.response?.status === 403) {
+          setErrorCompanies("Anda tidak memiliki akses untuk melihat data ini.");
+        } else if (!axiosError.response) {
+          setErrorCompanies("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+        } else {
+          setErrorCompanies(`Terjadi kesalahan (Error ${axiosError.response?.status}). Silakan coba lagi.`);
+        }
+      } else {
+        setErrorCompanies("Terjadi kesalahan yang tidak diketahui. Silakan refresh halaman.");
+      }
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  // Handle pagination
+  const handleNextPage = () => {
+    if (currentPage < lastPage) {
+      fetchCompanies(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      fetchCompanies(currentPage - 1);
+    }
+  };
+
+  // Get status badge for company
+  const getStatusBadge = (status: string): string => {
+    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
+    switch (status) {
+      case "active":
+        return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`;
+      case "inactive":
+        return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200`;
+      case "pending":
+        return `${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200`;
+      default:
+        return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200`;
+    }
+  };
+
+  // Get status label for company
+  const getStatusLabel = (status: string): string => {
+    switch (status) {
+      case "active":
+        return "Terverifikasi";
+      case "inactive":
+        return "Ditolak";
+      case "pending":
+        return "Belum Verifikasi";
+      default:
+        return "Tidak Diketahui";
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
+    fetchCompanies();
   }, []);
 
   // Initialize theme from localStorage or system preference
@@ -419,7 +591,7 @@ const LandingPage = () => {
 
   // Auto-slide testimonials
   useEffect(() => {
-    const interval = setInterval(nextTestimonial, 5000);
+    const interval = setInterval(nextTestimonial, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -823,34 +995,91 @@ const LandingPage = () => {
               </p>
             </header>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {companies.map((company) => (
-                <article
-                  key={company.id}
-                  className="bg-slate-50 dark:bg-slate-800 rounded-xl p-8 shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200 dark:border-slate-700"
-                >
-                  <div className="flex items-center space-x-4 mb-6">
-                    <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                      <span className="text-slate-700 dark:text-slate-300 font-bold text-lg">
-                        {company.logo}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                        {company.name}
-                      </h3>
-                      <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm">
-                        <MapPin className="w-4 h-4 mr-1" /> {company.location}
+              {loadingCompanies ? (
+                <>
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <CompanyCardSkeleton key={index} />
+                  ))}
+                </>
+              ) : errorCompanies ? (
+                <CompanyEmptyState onRefresh={() => fetchCompanies(1)} />
+              ) : companies.length > 0 ? (
+                companies.map((company) => (
+                  <article
+                    key={company.id}
+                    className="bg-slate-50 dark:bg-slate-800 rounded-xl p-8 shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200 dark:border-slate-700"
+                  >
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden">
+                        <Image
+                          src={getCompanyLogoUrl(company.logo, company.companyName)}
+                          alt={`Logo ${company.companyName}`}
+                          width={64}
+                          height={64}
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+                          {company.companyName}
+                        </h3>
+                        <span className={getStatusBadge(company.status)}>
+                          {getStatusLabel(company.status)}
+                        </span>
                       </div>
                     </div>
-                  </div>
-                  <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
-                    <button className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm transition-colors duration-300">
-                      Lihat Kemitraan →
-                    </button>
-                  </div>
-                </article>
-              ))}
+                    <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {company.address}
+                      </div>
+                      <div className="flex items-center">
+                        <Building className="w-4 h-4 mr-2" />
+                        {company.industri}
+                      </div>
+                    </div>
+                    <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                      <button className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm transition-colors duration-300">
+                        Lihat Kemitraan →
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <CompanyEmptyState onRefresh={() => fetchCompanies(1)} />
+              )}
             </div>
+            {lastPage > 1 && (
+              <div className="flex justify-center items-center mt-8 space-x-4">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    currentPage === 1
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                      : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                  }`}
+                  aria-label="Halaman sebelumnya"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-slate-600 dark:text-slate-400">
+                  Halaman {currentPage} dari {lastPage}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === lastPage}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    currentPage === lastPage
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                      : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                  }`}
+                  aria-label="Halaman berikutnya"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </main>
