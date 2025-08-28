@@ -21,7 +21,7 @@ apiBissaKerja.interceptors.request.use((config) => {
 
 // Fungsi untuk memeriksa status login
 export const checkLoginStatus = async (): Promise<boolean> => {
-  const token = Cookies.get("token");
+  const token = Cookies.get("islogin");
   if (!token) {
     return false;
   }

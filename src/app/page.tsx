@@ -4,7 +4,6 @@ import Image from "next/image"; // Use Next.js Image component
 import Navbar from "@/components/landing-page/Navbar";
 import Footer from "@/components/landing-page/Footer";
 import JobCard from "@/components/company/JobCard";
-import companiesData from "@/data/companies.json";
 import testimonialsData from "@/data/testimonials.json";
 import apiBissaKerja from "@/lib/api-bissa-kerja";
 import {
@@ -37,9 +36,19 @@ interface Job {
 
 interface Company {
   id: number;
-  name: string;
-  location: string;
-  logo: string;
+  nama_perusahaan: string;
+  industri: string;
+  alamat_lengkap?: string;
+  province_cd?: number;
+  regency_cd?: number;
+  deskripsi?: string;
+  logo?: string;
+  link_website?: string;
+  no_telp?: string;
+  tahun_berdiri?: number;
+  jumlah_karyawan?: number;
+  visi?: string;
+  misi?: string;
 }
 
 interface Testimonial {
@@ -50,6 +59,41 @@ interface Testimonial {
   avatar: string;
 }
 
+// Interface for API response (from ManagementCompanyPage)
+interface CompanyApiResponse {
+  id: number;
+  logo: string;
+  nama_perusahaan: string;
+  industri: string;
+  tahun_berdiri: string;
+  jumlah_karyawan: string;
+  province_id: string;
+  regencie_id: string;
+  deskripsi: string;
+  no_telp: string;
+  link_website: string;
+  alamat_lengkap: string;
+  visi: string;
+  misi: string;
+  nilai_nilai: string;
+  sertifikat: string;
+  bukti_wajib_lapor: string;
+  nib: string;
+  linkedin: string;
+  instagram: string;
+  facebook: string;
+  twitter: string;
+  youtube: string;
+  tiktok: string;
+  status_verifikasi: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  user: { id: number; name: string; email: string; avatar?: string; };
+  province: { id: string; name: string; };
+  regency: { id: string; name: string; };
+}
+
 const LandingPage = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
@@ -57,7 +101,12 @@ const LandingPage = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [errorJobs, setErrorJobs] = useState<string | null>(null);
-  const companies: Company[] = companiesData;
+  
+  // State untuk companies dari database
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [errorCompanies, setErrorCompanies] = useState<string | null>(null);
+  
   const testimonials: Testimonial[] = testimonialsData;
 
   // Fetch jobs from backend
@@ -80,6 +129,55 @@ const LandingPage = () => {
       }
     };
     fetchJobs();
+  }, []);
+
+  // Transform API response to Company interface
+  const transformApiResponseToCompany = (apiData: CompanyApiResponse[]): Company[] => {
+    return apiData.map((item) => ({
+      id: item.id,
+      nama_perusahaan: item.nama_perusahaan,
+      industri: item.industri,
+      alamat_lengkap: item.alamat_lengkap,
+      province_cd: Number(item.province_id),
+      regency_cd: Number(item.regencie_id),
+      deskripsi: item.deskripsi,
+      logo: item.logo,
+      link_website: item.link_website,
+      no_telp: item.no_telp,
+      tahun_berdiri: Number(item.tahun_berdiri),
+      jumlah_karyawan: Number(item.jumlah_karyawan),
+      visi: item.visi,
+      misi: item.misi,
+    }));
+  };
+
+  // Fetch companies from backend (using endpoint and transform from ManagementCompanyPage)
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoadingCompanies(true);
+        const response = await apiBissaKerja.get("account-management/get-company-by-location");
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          const transformedCompanies = transformApiResponseToCompany(response.data.data);
+          setCompanies(transformedCompanies);
+        } else if (response.data && Array.isArray(response.data.data)) {
+          const transformedCompanies = transformApiResponseToCompany(response.data.data);
+          setCompanies(transformedCompanies);
+        } else if (response.data && Array.isArray(response.data)) {
+          const transformedCompanies = transformApiResponseToCompany(response.data);
+          setCompanies(transformedCompanies);
+        } else {
+          setCompanies([]);
+          setErrorCompanies("Tidak ada data perusahaan ditemukan");
+        }
+      } catch (err) {
+        console.error("Error fetching companies:", err);
+        setErrorCompanies("Gagal mengambil data perusahaan");
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+    fetchCompanies();
   }, []);
 
   // Initialize theme from localStorage or system preference
@@ -120,8 +218,10 @@ const LandingPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Remove custom themeChange event listener if not used
-  // If you have a mechanism to dispatch themeChange, you can re-add it
+  // Function to generate company logo from first letter
+  const getCompanyLogo = (companyName: string) => {
+    return companyName.charAt(0).toUpperCase();
+  };
 
   if (!mounted) return null;
 
@@ -194,7 +294,7 @@ const LandingPage = () => {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-white">500+</div>
+                    <div className="text-2xl font-bold text-white">{companies.length}+</div>
                     <div className="text-sm text-slate-100 dark:text-slate-400 font-medium">
                       Mitra Perusahaan
                     </div>
@@ -522,34 +622,85 @@ const LandingPage = () => {
               </p>
             </header>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {companies.map((company) => (
-                <article
-                  key={company.id}
-                  className="bg-slate-50 dark:bg-slate-800 rounded-xl p-8 shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200 dark:border-slate-700"
-                >
-                  <div className="flex items-center space-x-4 mb-6">
-                    <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                      <span className="text-slate-700 dark:text-slate-300 font-bold text-lg">
-                        {company.logo}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                        {company.name}
-                      </h3>
-                      <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm">
-                        <MapPin className="w-4 h-4 mr-1" /> {company.location}
+              {loadingCompanies ? (
+                <div className="col-span-3 text-center py-8 text-slate-600 dark:text-slate-400">
+                  Memuat data perusahaan...
+                </div>
+              ) : errorCompanies ? (
+                <div className="col-span-3 text-center py-8 text-red-500">
+                  {errorCompanies}
+                </div>
+              ) : companies.length > 0 ? (
+                companies.slice(0, 6).map((company) => (
+                  <article
+                    key={company.id}
+                    className="bg-slate-50 dark:bg-slate-800 rounded-xl p-8 shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200 dark:border-slate-700 group"
+                  >
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                        {company.logo ? (
+                          <img 
+                            src={company.logo} 
+                            alt={`Logo ${company.nama_perusahaan}`}
+                            className="w-12 h-12 object-contain rounded"
+                          />
+                        ) : (
+                          <span className="text-slate-700 dark:text-slate-300 font-bold text-lg">
+                            {getCompanyLogo(company.nama_perusahaan)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+                          {company.nama_perusahaan}
+                        </h3>
+                        <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm mb-1">
+                          <MapPin className="w-4 h-4 mr-1" /> 
+                          {company.alamat_lengkap || "Lokasi tidak tersedia"}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-500">
+                          {company.industri}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
-                    <button className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm transition-colors duration-300">
-                      Lihat Kemitraan →
-                    </button>
-                  </div>
-                </article>
-              ))}
+                    {company.deskripsi && (
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
+                        {company.deskripsi}
+                      </p>
+                    )}
+                    <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <button className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm transition-colors duration-300">
+                          Lihat Kemitraan →
+                        </button>
+                        {company.link_website && (
+                          <a 
+                            href={company.link_website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors duration-300"
+                          >
+                            Website
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-8 text-slate-600 dark:text-slate-400">
+                  Tidak ada data perusahaan tersedia
+                </div>
+              )}
             </div>
+            
+            {companies.length > 6 && (
+              <div className="text-center mt-16">
+                <button className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-lg text-lg font-medium shadow-md hover:shadow-lg transition-all">
+                  Lihat Semua Mitra ({companies.length} Perusahaan)
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </main>

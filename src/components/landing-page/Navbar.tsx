@@ -51,7 +51,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm border-b border-gray-800">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-200 dark:bg-black border-b border-gray-300 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo - Responsive sizing */}
@@ -62,7 +62,7 @@ export default function Navbar() {
                 alt="InklusifKerja Logo"
                 className="w-20 h-20 sm:w-22 sm:h-15 rounded-lg hover:opacity-90 transition-opacity"
               />
-              <span className="text-lg sm:text-xl font-bold text-white hidden xs:block">
+              <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white hidden xs:block">
                 JatimBissa
               </span>
             </div>
@@ -73,25 +73,25 @@ export default function Navbar() {
             <div className="ml-10 flex items-baseline space-x-4 lg:space-x-8">
               <Link
                 href="/"
-                className="text-white hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
+                className="text-gray-900 dark:text-white hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
               >
                 Beranda
               </Link>
               <Link
                 href="/cari-kerja"
-                className="text-gray-300 hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
               >
                 Cari Kerja
               </Link>
               <Link
                 href="/akademik"
-                className="text-gray-300 hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
               >
                 Akademik
               </Link>
               <Link
                 href="/toko"
-                className="text-gray-300 hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-400 px-2 lg:px-3 py-2 text-sm font-medium transition-colors"
               >
                 Toko
               </Link>
@@ -103,13 +103,13 @@ export default function Navbar() {
             {/* Dark Mode Toggle - Always visible */}
             <button
               onClick={toggleDarkMode}
-              className="p-1.5 sm:p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle dark mode"
             >
               {darkMode ? (
                 <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
               ) : (
-                <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
+                <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
               )}
             </button>
 
@@ -118,7 +118,7 @@ export default function Navbar() {
               <div className="hidden sm:flex items-center space-x-2">
                 <Link
                   href="/login"
-                  className="text-gray-300 hover:text-blue-400 px-3 py-2 text-sm font-medium transition-colors"
+                  className="text-gray-600 dark:text-gray-300 hover:text-blue-400 px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Masuk
                 </Link>
@@ -143,13 +143,13 @@ export default function Navbar() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 sm:p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+              className="md:hidden p-1.5 sm:p-2 rounded-lg bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? (
-                <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
               ) : (
-                <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
+                <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
               )}
             </button>
           </div>
@@ -158,38 +158,38 @@ export default function Navbar() {
 
       {/* Mobile Menu - Optimized for touch */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-black dark:bg-black border-t border-gray-800">
+        <div className="md:hidden bg-gray-200 dark:bg-black border-t border-gray-300 dark:border-gray-800">
           <div className="px-4 pt-2 pb-3 space-y-1">
             <Link
               href="/"
-              className="block px-3 py-3 text-base font-medium text-white hover:text-blue-400 transition-colors rounded-lg"
+              className="block px-3 py-3 text-base font-medium text-gray-900 dark:text-white hover:text-blue-400 transition-colors rounded-lg"
             >
               Beranda
             </Link>
             <Link
               href="/cari-kerja"
-              className="block px-3 py-3 text-base font-medium text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
+              className="block px-3 py-3 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
             >
               Cari Kerja
             </Link>
             <Link
               href="/akademi"
-              className="block px-3 py-3 text-base font-medium text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
+              className="block px-3 py-3 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
             >
               Akademi
             </Link>
             <Link
               href="/toko"
-              className="block px-3 py-3 text-base font-medium text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
+              className="block px-3 py-3 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
             >
               Toko
             </Link>
 
             {!isLogin ? (
-              <div className="border-t border-gray-800 pt-3 mt-3 sm:hidden">
+              <div className="border-t border-gray-300 dark:border-gray-800 pt-3 mt-3 sm:hidden">
                 <Link
                   href="/login"
-                  className="block w-full text-left px-3 py-3 text-base font-medium text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
+                  className="block w-full text-left px-3 py-3 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-blue-400 transition-colors rounded-lg"
                 >
                   Masuk
                 </Link>
@@ -201,7 +201,7 @@ export default function Navbar() {
                 </Link>
               </div>
             ) : (
-              <div className="border-t border-gray-800 pt-3 mt-3 sm:hidden">
+              <div className="border-t border-gray-300 dark:border-gray-800 pt-3 mt-3 sm:hidden">
                 <Link
                   href="/dashboard"
                   className="block w-full text-left px-3 py-3 text-base font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg mt-2 transition-colors"
