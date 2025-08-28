@@ -11,14 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle,
-  UserPlus,
   Search,
   Send,
-  Heart,
   HandHeart,
   Accessibility,
-  Eye,
-  Ear,
   UserCheck,
   ClipboardCheck,
   Target,
@@ -27,135 +23,91 @@ import {
   TrendingUp,
   Globe,
   Phone,
-  MapPinIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useTheme } from "@/context/ThemeContext";
+
+// Extract static data to module scope to avoid re-creating on each render
+const JOB_LISTINGS = [
+  {
+    id: 1,
+    title: "Front-End Developer",
+    company: "PT Tech Indonesia",
+    location: "Surabaya",
+    salary: "8-12 juta",
+    type: "Full-time",
+    accessibility: ["Ramah Tuli", "Akses Kursi Roda"],
+    posted: "2 hari lalu",
+  },
+  {
+    id: 2,
+    title: "Data Analyst",
+    company: "CV Digital Solutions",
+    location: "Malang",
+    salary: "6-9 juta",
+    type: "Full-time",
+    accessibility: ["Ramah Tunanetra", "Flexible Hours"],
+    posted: "1 hari lalu",
+  },
+  {
+    id: 3,
+    title: "Content Writer",
+    company: "Media Creative Agency",
+    location: "Sidoarjo",
+    salary: "5-7 juta",
+    type: "Part-time",
+    accessibility: ["Work From Home", "Ramah Disabilitas Fisik"],
+    posted: "3 hari lalu",
+  },
+];
+
+const COMPANIES = [
+  { id: 1, name: "PT Telkom Indonesia", logo: "TI", location: "Jakarta" },
+  { id: 2, name: "Bank Mandiri", logo: "BM", location: "Surabaya" },
+  { id: 3, name: "Gojek Indonesia", logo: "GI", location: "Jakarta" },
+  { id: 4, name: "Shopee Indonesia", logo: "SI", location: "Jakarta" },
+  { id: 5, name: "Tokopedia", logo: "TP", location: "Jakarta" },
+  { id: 6, name: "Bukalapak", logo: "BL", location: "Jakarta" },
+];
+
+const TESTIMONIALS = [
+  {
+    name: "Andi Prasetyo",
+    role: "Software Developer",
+    company: "PT Tech Solutions",
+    content:
+      "Platform ini benar-benar membantu saya menemukan pekerjaan yang sesuai dengan kebutuhan aksesibilitas saya. Prosesnya mudah dan perusahaan yang terdaftar sangat inklusif.",
+    avatar: "AP",
+  },
+  {
+    name: "Sari Wijayanti",
+    role: "Data Analyst",
+    company: "CV Digital Innovation",
+    content:
+      "Sebagai penyandang disabilitas, saya merasa dihargai di platform ini. Tim support sangat membantu dalam proses pencarian kerja.",
+    avatar: "SW",
+  },
+  {
+    name: "Budi Santoso",
+    role: "Graphic Designer",
+    company: "Creative Agency Indo",
+    content:
+      "Fitur filter berdasarkan kebutuhan aksesibilitas sangat membantu. Saya dapat menemukan pekerjaan yang benar-benar cocok untuk saya.",
+    avatar: "BS",
+  },
+];
 
 const LandingPage = () => {
+  const { theme, toggleTheme } = useTheme();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [darkMode, setDarkMode] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // Mock data
-  const jobListings = [
-    {
-      id: 1,
-      title: "Front-End Developer",
-      company: "PT Tech Indonesia",
-      location: "Surabaya",
-      salary: "8-12 juta",
-      type: "Full-time",
-      accessibility: ["Ramah Tuli", "Akses Kursi Roda"],
-      posted: "2 hari lalu",
-    },
-    {
-      id: 2,
-      title: "Data Analyst",
-      company: "CV Digital Solutions",
-      location: "Malang",
-      salary: "6-9 juta",
-      type: "Full-time",
-      accessibility: ["Ramah Tunanetra", "Flexible Hours"],
-      posted: "1 hari lalu",
-    },
-    {
-      id: 3,
-      title: "Content Writer",
-      company: "Media Creative Agency",
-      location: "Sidoarjo",
-      salary: "5-7 juta",
-      type: "Part-time",
-      accessibility: ["Work From Home", "Ramah Disabilitas Fisik"],
-      posted: "3 hari lalu",
-    },
-  ];
-
-  const companies = [
-    { id: 1, name: "PT Telkom Indonesia", logo: "TI", location: "Jakarta" },
-    { id: 2, name: "Bank Mandiri", logo: "BM", location: "Surabaya" },
-    { id: 3, name: "Gojek Indonesia", logo: "GI", location: "Jakarta" },
-    { id: 4, name: "Shopee Indonesia", logo: "SI", location: "Jakarta" },
-    { id: 5, name: "Tokopedia", logo: "TP", location: "Jakarta" },
-    { id: 6, name: "Bukalapak", logo: "BL", location: "Jakarta" },
-  ];
-
-  const testimonials = [
-    {
-      name: "Andi Prasetyo",
-      role: "Software Developer",
-      company: "PT Tech Solutions",
-      content:
-        "Platform ini benar-benar membantu saya menemukan pekerjaan yang sesuai dengan kebutuhan aksesibilitas saya. Prosesnya mudah dan perusahaan yang terdaftar sangat inklusif.",
-      avatar: "AP",
-    },
-    {
-      name: "Sari Wijayanti",
-      role: "Data Analyst",
-      company: "CV Digital Innovation",
-      content:
-        "Sebagai penyandang disabilitas, saya merasa dihargai di platform ini. Tim support sangat membantu dalam proses pencarian kerja.",
-      avatar: "SW",
-    },
-    {
-      name: "Budi Santoso",
-      role: "Graphic Designer",
-      company: "Creative Agency Indo",
-      content:
-        "Fitur filter berdasarkan kebutuhan aksesibilitas sangat membantu. Saya dapat menemukan pekerjaan yang benar-benar cocok untuk saya.",
-      avatar: "BS",
-    },
-  ];
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      setDarkMode(savedTheme === "dark");
-    } else {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      setDarkMode(prefersDark);
-    }
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handleStorageChange = (e: any) => {
-      if (e.key === "theme") {
-        setDarkMode(e.newValue === "dark");
-      }
-    };
-
-    const handleThemeChange = (e: any) => {
-      setDarkMode(e.detail === "dark");
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("themeChange", handleThemeChange);
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("themeChange", handleThemeChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (mounted) {
-      if (darkMode) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }, [darkMode, mounted]);
 
   const nextTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
   };
 
   const prevTestimonial = () => {
     setCurrentTestimonial(
-      (prev) => (prev - 1 + testimonials.length) % testimonials.length
+      (prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length
     );
   };
 
@@ -164,25 +116,8 @@ const LandingPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (!mounted) {
-    return null;
-  }
-
-  const toggleTheme = () => {
-    const newTheme = !darkMode;
-    setDarkMode(newTheme);
-    localStorage.setItem("theme", newTheme ? "dark" : "light");
-    window.dispatchEvent(
-      new CustomEvent("themeChange", { detail: newTheme ? "dark" : "light" })
-    );
-  };
-
   return (
-    <div
-      className={`min-h-screen transition-colors duration-300 ${
-        darkMode ? "dark" : ""
-      }`}
-    >
+    <div className={`min-h-screen transition-colors duration-300`}>
       {/* Skip to main content link for screen readers */}
       <a
         href="#main-content"
@@ -249,7 +184,7 @@ const LandingPage = () => {
                 className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
                 aria-label="Toggle theme"
               >
-                {darkMode ? "🌞" : "🌙"}
+                {theme === "dark" ? "🌞" : "🌙"}
               </button>
               <Link
                 href={"/login"}
@@ -511,7 +446,7 @@ const LandingPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {jobListings.map((job) => (
+              {JOB_LISTINGS.map((job: typeof JOB_LISTINGS[number]) => (
                 <div
                   key={job.id}
                   className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 group hover:-translate-y-1"
@@ -550,7 +485,7 @@ const LandingPage = () => {
                       Fitur Aksesibilitas:
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {job.accessibility.map((feature, index) => (
+                      {job.accessibility.map((feature: string, index: number) => (
                         <span
                           key={index}
                           className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs font-medium"
@@ -657,7 +592,7 @@ const LandingPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {companies.map((company) => (
+              {COMPANIES.map((company: typeof COMPANIES[number]) => (
                 <div
                   key={company.id}
                   className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 group hover:-translate-y-1"
@@ -707,23 +642,23 @@ const LandingPage = () => {
                 <div className="text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
                     <span className="text-white font-bold text-2xl">
-                      {testimonials[currentTestimonial].avatar}
+                      {TESTIMONIALS[currentTestimonial].avatar}
                     </span>
                   </div>
 
                   <blockquote className="text-xl md:text-2xl text-gray-900 dark:text-white font-medium leading-relaxed mb-6">
-                    "{testimonials[currentTestimonial].content}"
+                    "{TESTIMONIALS[currentTestimonial].content}"
                   </blockquote>
 
                   <div className="space-y-1">
                     <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {testimonials[currentTestimonial].name}
+                      {TESTIMONIALS[currentTestimonial].name}
                     </div>
                     <div className="text-base text-blue-600 dark:text-blue-400 font-medium">
-                      {testimonials[currentTestimonial].role}
+                      {TESTIMONIALS[currentTestimonial].role}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {testimonials[currentTestimonial].company}
+                      {TESTIMONIALS[currentTestimonial].company}
                     </div>
                   </div>
                 </div>
@@ -746,7 +681,7 @@ const LandingPage = () => {
 
               {/* Dots Indicator */}
               <div className="flex justify-center space-x-2 mt-8">
-                {testimonials.map((_, index) => (
+                {TESTIMONIALS.map((_: typeof TESTIMONIALS[number], index: number) => (
                   <button
                     key={index}
                     onClick={() => setCurrentTestimonial(index)}

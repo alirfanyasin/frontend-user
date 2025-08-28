@@ -46,6 +46,13 @@ interface AccessibilitySettings {
   // Audio Settings
   soundEnabled: boolean;
   textToSpeech: boolean;
+  ttsOnHover?: boolean;
+  ttsOnFocus?: boolean;
+  ttsDelayMs?: number;
+  ttsRate?: number; // 0.1 - 10
+  ttsPitch?: number; // 0 - 2
+  ttsVolume?: number; // 0 - 1
+  ttsVoice?: string; // voice name
   
   // Navigation
   keyboardNavigation: boolean;
@@ -77,6 +84,7 @@ const AccessibilityOverlay: React.FC = () => {
   const reinitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mutationObserverRef = useRef<MutationObserver | null>(null);
   const cleanupFunctionsRef = useRef<(() => void)[]>([]);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   
   // Load settings from localStorage or use defaults
   const [settings, setSettings] = useState<AccessibilitySettings>(() => {
@@ -97,6 +105,13 @@ const AccessibilityOverlay: React.FC = () => {
       simplifyContent: false,
       soundEnabled: true,
       textToSpeech: false,
+      ttsOnHover: true,
+      ttsOnFocus: true,
+      ttsDelayMs: 120,
+      ttsRate: 0.95,
+      ttsPitch: 1,
+      ttsVolume: 0.9,
+      ttsVoice: '',
       keyboardNavigation: true,
       skipLinks: true
     };
@@ -128,6 +143,32 @@ const AccessibilityOverlay: React.FC = () => {
       }
     }
   }, [settings]);
+
+  // Load TTS voices and set default voice if not set
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const loadVoices = (): void => {
+      const voices = speechSynthesis.getVoices();
+      setAvailableVoices(voices);
+      if (voices.length > 0 && !settings.ttsVoice) {
+        const preferred = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('id'))
+          || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'))
+          || voices[0];
+        if (preferred) {
+          setSettings(prev => ({ ...prev, ttsVoice: preferred.name }));
+        }
+      }
+    };
+    loadVoices();
+    if (typeof window !== 'undefined') {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        speechSynthesis.onvoiceschanged = null as any;
+      }
+    };
+  }, [settings.ttsVoice]);
 
   // Clear all accessibility effects - more comprehensive cleanup
   const clearAllEffects = useCallback((): void => {
@@ -423,6 +464,8 @@ const AccessibilityOverlay: React.FC = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     
     let currentUtterance: SpeechSynthesisUtterance | null = null;
+    let hoverTimer: number | null = null;
+    let lastSpokenTarget: EventTarget | null = null;
     
     const getTextFromElement = (element: HTMLElement): string => {
       // Handle different element types
@@ -496,73 +539,87 @@ const AccessibilityOverlay: React.FC = () => {
       return text.trim().substring(0, 200); // Limit to 200 characters
     };
     
-    const handleMouseEnter = (e: Event): void => {
-      const target = e.target as HTMLElement;
-      
-      // Skip if target is within accessibility overlay
+    const speakWithSettings = (text: string): void => {
+      if (!settings.soundEnabled) return;
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = settings.ttsRate ?? 1;
+      utterance.pitch = settings.ttsPitch ?? 1;
+      utterance.volume = settings.ttsVolume ?? 1;
+      // Try to set voice by name if available
+      const voices = speechSynthesis.getVoices();
+      const selected = (settings.ttsVoice && voices.find(v => v.name === settings.ttsVoice))
+        || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('id'))
+        || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'))
+        || voices[0];
+      if (selected) utterance.voice = selected;
+      currentUtterance = utterance;
+      speechSynthesis.speak(utterance);
+    };
+    
+    const queueSpeakFromEvent = (target: HTMLElement): void => {
+      if (!settings.ttsOnHover && !settings.ttsOnFocus) return;
       if (!target || target.closest('#accessibility-overlay')) return;
-      
-      // Skip if target is body or html
       if (target.tagName === 'BODY' || target.tagName === 'HTML') return;
-      
       const textToSpeak = getTextFromElement(target);
-      
-      if (textToSpeak && textToSpeak.length > 0) {
-        // Cancel previous speech
+      if (!textToSpeak) return;
+      if (hoverTimer) window.clearTimeout(hoverTimer);
+      const delay = settings.ttsDelayMs ?? 120;
+      hoverTimer = window.setTimeout(() => {
+        // Prevent re-speaking same node rapidly
+        if (lastSpokenTarget !== target) {
+          lastSpokenTarget = target;
+          speakWithSettings(textToSpeak);
+        }
+      }, delay);
+    };
+    
+    const onMouseOver = (e: Event): void => {
+      if (!settings.ttsOnHover) return;
+      queueSpeakFromEvent(e.target as HTMLElement);
+    };
+    const onMouseOut = (): void => {
+      if (hoverTimer) {
+        window.clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
+    };
+    const onFocusIn = (e: Event): void => {
+      if (!settings.ttsOnFocus) return;
+      queueSpeakFromEvent(e.target as HTMLElement);
+    };
+    const onKeyDown = (e: KeyboardEvent): void => {
+      // Space toggles pause/resume, Esc cancels
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (speechSynthesis.speaking) {
+          if (speechSynthesis.paused) speechSynthesis.resume();
+          else speechSynthesis.pause();
+        }
+      } else if (e.key === 'Escape') {
         speechSynthesis.cancel();
-        
-        // Create new utterance
-        currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
-        currentUtterance.rate = 0.9;
-        currentUtterance.volume = 0.8;
-        currentUtterance.lang = 'id-ID'; // Indonesian language
-        
-        // Speak with a small delay to avoid rapid-fire speech
-        setTimeout(() => {
-          if (currentUtterance) {
-            speechSynthesis.speak(currentUtterance);
-          }
-        }, 100);
       }
     };
     
-    const handleMouseLeave = (): void => {
-      // Cancel speech when mouse leaves
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        speechSynthesis.cancel();
-      }
-      currentUtterance = null;
-    };
-    
-    // First, clean up any existing listeners
-    const existingElements = document.querySelectorAll('[data-accessibility-listener]');
-    existingElements.forEach(element => {
-      element.removeAttribute('data-accessibility-listener');
-      element.removeEventListener('mouseenter', handleMouseEnter);
-      element.removeEventListener('mouseleave', handleMouseLeave);
-    });
-    
-    // Add event listeners to all elements
-    const elements = document.querySelectorAll('*');
-    elements.forEach(element => {
-      // Mark element as having listener to avoid duplicates
-      element.setAttribute('data-accessibility-listener', 'true');
-      element.addEventListener('mouseenter', handleMouseEnter, { passive: true });
-      element.addEventListener('mouseleave', handleMouseLeave, { passive: true });
-    });
+    document.addEventListener('mouseover', onMouseOver, { passive: true });
+    document.addEventListener('mouseout', onMouseOut, { passive: true });
+    document.addEventListener('focusin', onFocusIn, { passive: true });
+    document.addEventListener('keydown', onKeyDown);
     
     // Cleanup function
     return () => {
-      const elementsWithListeners = document.querySelectorAll('[data-accessibility-listener]');
-      elementsWithListeners.forEach(element => {
-        element.removeAttribute('data-accessibility-listener');
-        element.removeEventListener('mouseenter', handleMouseEnter);
-        element.removeEventListener('mouseleave', handleMouseLeave);
-      });
+      document.removeEventListener('mouseover', onMouseOver as EventListener);
+      document.removeEventListener('mouseout', onMouseOut as EventListener);
+      document.removeEventListener('focusin', onFocusIn as EventListener);
+      document.removeEventListener('keydown', onKeyDown as EventListener);
+      if (hoverTimer) {
+        window.clearTimeout(hoverTimer);
+      }
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         speechSynthesis.cancel();
       }
       currentUtterance = null;
+      lastSpokenTarget = null;
     };
   }, []);
 
@@ -587,6 +644,13 @@ const AccessibilityOverlay: React.FC = () => {
       simplifyContent: false,
       soundEnabled: true,
       textToSpeech: false,
+      ttsOnHover: true,
+      ttsOnFocus: true,
+      ttsDelayMs: 120,
+      ttsRate: 0.95,
+      ttsPitch: 1,
+      ttsVolume: 0.9,
+      ttsVoice: '',
       keyboardNavigation: true,
       skipLinks: true
     };
@@ -627,17 +691,23 @@ const AccessibilityOverlay: React.FC = () => {
 
   const speakText = useCallback((text: string): void => {
     // Only speak if accessibility is enabled AND text-to-speech is enabled
-    if (!settings.enabled || !settings.textToSpeech) return;
+    if (!settings.enabled || !settings.textToSpeech || !settings.soundEnabled) return;
     
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.8;
-      utterance.volume = 0.7;
-      utterance.lang = 'id-ID';
+      utterance.rate = settings.ttsRate ?? 1;
+      utterance.pitch = settings.ttsPitch ?? 1;
+      utterance.volume = settings.ttsVolume ?? 1;
+      const voices = speechSynthesis.getVoices();
+      const selected = (settings.ttsVoice && voices.find(v => v.name === settings.ttsVoice))
+        || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('id'))
+        || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'))
+        || voices[0];
+      if (selected) utterance.voice = selected;
       speechSynthesis.speak(utterance);
     }
-  }, [settings.enabled, settings.textToSpeech]); // Add enabled dependency
+  }, [settings.enabled, settings.textToSpeech, settings.soundEnabled, settings.ttsRate, settings.ttsPitch, settings.ttsVolume, settings.ttsVoice]); // Add enabled dependency
 
   const SettingButton: React.FC<SettingButtonProps> = ({ 
     icon: Icon, 
@@ -972,10 +1042,58 @@ const AccessibilityOverlay: React.FC = () => {
                 />
                 
                 {settings.textToSpeech && settings.enabled && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-blue-800 text-xs">
-                      💡 Arahkan kursor ke elemen apapun untuk mendengar teksnya
-                    </p>
+                  <div className="p-3 space-y-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-blue-800 text-xs">💡 Arahkan kursor atau fokuskan elemen untuk mendengar teksnya</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-blue-900">Suara</label>
+                        <select
+                          value={settings.ttsVoice || ''}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateSetting('ttsVoice', e.target.value)}
+                          className="w-full p-2 border border-blue-200 rounded-md bg-white text-blue-900"
+                        >
+                          {availableVoices.map(v => (
+                            <option key={`${v.name}-${v.lang}`} value={v.name}>{`${v.name} (${v.lang})`}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-blue-900">Kecepatan: {Math.round((settings.ttsRate ?? 1) * 100)}%</label>
+                        <input type="range" min={50} max={150} step={5} value={Math.round(((settings.ttsRate ?? 1) * 100))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting('ttsRate', Number(e.target.value) / 100)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-blue-900">Pitch: {(settings.ttsPitch ?? 1).toFixed(2)}</label>
+                        <input type="range" min={50} max={150} step={5} value={Math.round(((settings.ttsPitch ?? 1) * 100))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting('ttsPitch', Number(e.target.value) / 100)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-blue-900">Volume: {Math.round((settings.ttsVolume ?? 1) * 100)}%</label>
+                        <input type="range" min={0} max={100} step={5} value={Math.round(((settings.ttsVolume ?? 1) * 100))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting('ttsVolume', Number(e.target.value) / 100)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-blue-900">Tunda saat hover: {settings.ttsDelayMs} ms</label>
+                        <input type="range" min={0} max={600} step={20} value={settings.ttsDelayMs ?? 120}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting('ttsDelayMs', Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-medium text-blue-900 flex-1">Bacakan saat hover</label>
+                        <input type="checkbox" checked={!!settings.ttsOnHover}
+                          onChange={() => updateSetting('ttsOnHover', !settings.ttsOnHover)}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-medium text-blue-900 flex-1">Bacakan saat fokus</label>
+                        <input type="checkbox" checked={!!settings.ttsOnFocus}
+                          onChange={() => updateSetting('ttsOnFocus', !settings.ttsOnFocus)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
