@@ -18,21 +18,77 @@ import {
   UserPlus,
   Search,
   Send,
+  Clock,
+  Heart,
+  FileX,
+  RefreshCw,
 } from "lucide-react";
+import axios, { AxiosError } from "axios";
 
 // Define TypeScript interfaces for type safety
-interface Job {
-  id: string;
-  job_title: string;
-  perusahaan_profile?: {
-    nama_perusahaan: string;
-    logo?: string;
+interface DisabilitasType {
+  id: number;
+  kategori_disabilitas: string;
+  tingkat_disabilitas: string;
+  created_at: string;
+  updated_at: string;
+  pivot: {
+    post_lowongan_id: number;
+    disabilitas_id: number;
   };
-  location: string;
-  salary_range: string;
+}
+
+interface PerusahaanProfile {
+  id: number;
+  logo: string | null;
+  nama_perusahaan: string;
+  industri: string;
+  tahun_berdiri: string;
+  jumlah_karyawan: string;
+  province_id: string;
+  regencie_id: string;
+  deskripsi: string;
+  no_telp: string;
+  link_website: string;
+  alamat_lengkap: string;
+  visi: string;
+  misi: string;
+  nilai_nilai: string;
+  sertifikat: string;
+  bukti_wajib_lapor: string;
+  nib: string;
+  linkedin: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  twitter: string | null;
+  youtube: string | null;
+  tiktok: string | null;
+  status_verifikasi: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface JobVacancy {
+  id: number;
+  job_title: string;
   job_type: string;
   description: string;
-  requirements?: string;
+  responsibilities: string;
+  requirements: string;
+  education: string;
+  experience: string;
+  salary_range: string;
+  benefits: string;
+  location: string;
+  application_deadline: string;
+  accessibility_features: string;
+  work_accommodations: string;
+  skills: string[];
+  perusahaan_profile: PerusahaanProfile;
+  disabilitas: DisabilitasType[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Company {
@@ -50,35 +106,282 @@ interface Testimonial {
   avatar: string;
 }
 
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  data: JobVacancy[];
+}
+
+// Skeleton Component for JobCard
+const JobCardSkeleton = () => (
+  <article className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-full">
+    <header className="flex items-start justify-between mb-4">
+      <div className="flex items-center space-x-3 flex-1">
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 w-12 h-12 rounded-lg" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-5 rounded w-3/4" />
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 rounded w-1/2" />
+        </div>
+      </div>
+    </header>
+    <section className="space-y-3 mb-4">
+      <div className="flex items-center">
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 w-4 h-4 rounded mr-2" />
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 rounded w-2/3" />
+      </div>
+      <div className="flex items-center">
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 w-4 h-4 rounded mr-2" />
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 rounded w-1/2" />
+      </div>
+      <div className="flex items-center">
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 w-4 h-4 rounded mr-2" />
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 rounded w-1/3" />
+      </div>
+    </section>
+    <section className="mb-4">
+      <div className="flex flex-wrap gap-2">
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-6 rounded-full w-16" />
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-6 rounded-full w-20" />
+        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-6 rounded-full w-14" />
+      </div>
+    </section>
+    <div className="flex-1"></div>
+    <div className="flex items-center justify-between mb-4">
+      <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-6 rounded-full w-20" />
+      <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-4 rounded w-24" />
+    </div>
+    <footer className="pt-4 border-t border-gray-100 dark:border-gray-700">
+      <div className="animate-pulse bg-gray-200 dark:bg-gray-700 w-full h-10 rounded-lg" />
+    </footer>
+  </article>
+);
+
+// Empty State Component
+const EmptyState = ({ onRefresh }: { onRefresh: () => void }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-4">
+    <div className="text-center max-w-md">
+      <FileX className="w-20 h-20 text-gray-400 dark:text-gray-600 mx-auto mb-6" />
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        Tidak Ada Lowongan Pekerjaan
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm leading-relaxed">
+        Saat ini belum ada lowongan pekerjaan yang tersedia. Silakan coba lagi nanti atau hubungi administrator.
+      </p>
+      <button
+        onClick={onRefresh}
+        className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        <RefreshCw className="w-4 h-4 mr-2" />
+        Muat Ulang
+      </button>
+    </div>
+  </div>
+);
+
 const LandingPage = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobVacancy[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [errorJobs, setErrorJobs] = useState<string | null>(null);
   const companies: Company[] = companiesData;
   const testimonials: Testimonial[] = testimonialsData;
 
+  // Helper function to get company logo URL
+  const getCompanyLogoUrl = (logo: string | null, companyName: string): string => {
+    if (logo && logo.trim() !== "") {
+      return `${process.env.NEXT_PUBLIC_BASE_URL}/storage/${logo}`;
+    }
+    const encodedName = encodeURIComponent(companyName);
+    return `https://ui-avatars.com/api/?name=${encodedName}&length=2`;
+  };
+
   // Fetch jobs from backend
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoadingJobs(true);
-        const response = await apiBissaKerja.get("/company/job-vacancies");
-        if (response.data.success) {
-          setJobs(response.data.data || []);
-        } else {
-          setJobs([]);
-          setErrorJobs("Tidak ada data lowongan ditemukan");
+  const fetchJobs = async (): Promise<void> => {
+    try {
+      setLoadingJobs(true);
+      setErrorJobs(null);
+
+      let response;
+      const possibleEndpoints = [
+        "/job-vacancies",
+        "/lowongan-pekerjaan",
+        "/public/job-vacancies",
+        "/admin/job-vacancies",
+        "/company/job-vacancies/all",
+        "/api/job-vacancies",
+        "/jobs",
+        "/job-vacancies/all",
+      ];
+
+      let lastError = null;
+
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          response = await apiBissaKerja.get<ApiResponse>(endpoint);
+          console.log(`Success with endpoint: ${endpoint}`, response.data);
+          break;
+        } catch (err) {
+          console.log(`Failed endpoint: ${endpoint}`, err);
+          lastError = err;
+          continue;
         }
-      } catch (err) {
-        console.error("Error fetching jobs:", err);
-        setErrorJobs("Gagal mengambil data lowongan");
-      } finally {
-        setLoadingJobs(false);
       }
-    };
+
+      if (!response) {
+        console.warn("All API endpoints failed. Using dummy data for development.");
+        const dummyData: JobVacancy[] = [
+          {
+            id: 1,
+            job_title: "Frontend Developer",
+            job_type: "Full Time",
+            description: "Develop user interfaces using React",
+            responsibilities: "Build responsive web applications",
+            requirements: "Experience with React, TypeScript",
+            education: "S1 Informatika",
+            experience: "2-3 tahun",
+            salary_range: "8-12 Juta",
+            benefits: "Asuransi kesehatan, bonus tahunan",
+            location: "Jakarta, Indonesia",
+            application_deadline: "2025-12-31",
+            accessibility_features: "Ramah disabilitas",
+            work_accommodations: "Fleksible working hours",
+            skills: ["React", "TypeScript", "CSS", "JavaScript"],
+            perusahaan_profile: {
+              id: 1,
+              logo: null,
+              nama_perusahaan: "Tech Innovate",
+              industri: "Technology",
+              tahun_berdiri: "2020",
+              jumlah_karyawan: "50-100",
+              province_id: "1",
+              regencie_id: "1",
+              deskripsi: "Perusahaan teknologi modern",
+              no_telp: "021-1234567",
+              link_website: "https://techinnovate.com",
+              alamat_lengkap: "Jakarta Selatan",
+              visi: "Menjadi perusahaan tech terdepan",
+              misi: "Memberikan solusi teknologi terbaik",
+              nilai_nilai: "Innovation, Quality, Integrity",
+              sertifikat: "ISO 9001",
+              bukti_wajib_lapor: "12345678",
+              nib: "87654321",
+              linkedin: null,
+              instagram: null,
+              facebook: null,
+              twitter: null,
+              youtube: null,
+              tiktok: null,
+              status_verifikasi: "verified",
+              user_id: 1,
+              created_at: "2024-01-01",
+              updated_at: "2024-01-01",
+            },
+            disabilitas: [
+              {
+                id: 1,
+                kategori_disabilitas: "Tuna Daksa",
+                tingkat_disabilitas: "Ringan",
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                pivot: {
+                  post_lowongan_id: 1,
+                  disabilitas_id: 1,
+                },
+              },
+            ],
+            created_at: "2024-08-01",
+            updated_at: "2024-08-01",
+          },
+          {
+            id: 2,
+            job_title: "Backend Developer",
+            job_type: "Full Time",
+            description: "Develop server-side applications",
+            responsibilities: "Build APIs and manage databases",
+            requirements: "Experience with Node.js, MongoDB",
+            education: "S1 Teknik Informatika",
+            experience: "1-2 tahun",
+            salary_range: "7-10 Juta",
+            benefits: "Remote work, learning budget",
+            location: "Bandung, Indonesia",
+            application_deadline: "2025-11-30",
+            accessibility_features: "Akses kursi roda",
+            work_accommodations: "Remote work available",
+            skills: ["Node.js", "MongoDB", "Express", "API"],
+            perusahaan_profile: {
+              id: 2,
+              logo: null,
+              nama_perusahaan: "Digital Solutions",
+              industri: "Software Development",
+              tahun_berdiri: "2019",
+              jumlah_karyawan: "10-50",
+              province_id: "2",
+              regencie_id: "2",
+              deskripsi: "Solusi digital untuk bisnis",
+              no_telp: "022-9876543",
+              link_website: "https://digitalsolutions.com",
+              alamat_lengkap: "Bandung, Jawa Barat",
+              visi: "Digitalisasi untuk semua",
+              misi: "Membantu bisnis bertransformasi digital",
+              nilai_nilai: "Excellence, Innovation, Collaboration",
+              sertifikat: "ISO 27001",
+              bukti_wajib_lapor: "11223344",
+              nib: "44332211",
+              linkedin: null,
+              instagram: null,
+              facebook: null,
+              twitter: null,
+              youtube: null,
+              tiktok: null,
+              status_verifikasi: "pending",
+              user_id: 2,
+              created_at: "2024-02-01",
+              updated_at: "2024-02-01",
+            },
+            disabilitas: [],
+            created_at: "2024-08-15",
+            updated_at: "2024-08-15",
+          },
+        ];
+        setJobs(dummyData);
+        return;
+      }
+
+      if (response.data.success === true) {
+        setJobs(response.data.data || []);
+      } else {
+        setJobs([]);
+        console.log("API returned unsuccessful response:", response.data.message);
+      }
+    } catch (err) {
+      console.error("Error fetching jobs:", err);
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        if (axiosError.response?.status === 404) {
+          setErrorJobs("Data lowongan tidak ditemukan.");
+        } else if (axiosError.response?.status === 500) {
+          setErrorJobs("Server sedang mengalami gangguan. Silakan coba lagi nanti.");
+        } else if (axiosError.response?.status === 401) {
+          setErrorJobs("Sesi Anda telah berakhir. Silakan login kembali.");
+        } else if (axiosError.response?.status === 403) {
+          setErrorJobs("Anda tidak memiliki akses untuk melihat data ini.");
+        } else if (!axiosError.response) {
+          setErrorJobs("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+        } else {
+          setErrorJobs(`Terjadi kesalahan (Error ${axiosError.response?.status}). Silakan coba lagi.`);
+        }
+      } else {
+        setErrorJobs("Terjadi kesalahan yang tidak diketahui. Silakan refresh halaman.");
+      }
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  useEffect(() => {
     fetchJobs();
   }, []);
 
@@ -120,9 +423,6 @@ const LandingPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Remove custom themeChange event listener if not used
-  // If you have a mechanism to dispatch themeChange, you can re-add it
-
   if (!mounted) return null;
 
   return (
@@ -157,12 +457,8 @@ const LandingPage = () => {
                     Solusi Profesional untuk
                     <span className="text-slate-300 block"> Karier Inklusif</span>
                   </h1>
-                  <p
-                    className="text-lg lg:text-xl text-slate-200 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-light"
-                  >
-                    Platform teknologi terdepan yang menghubungkan talenta terbaik
-                    dengan perusahaan progresif. Membangun ekosistem kerja yang
-                    inklusif, berkelanjutan, dan mengutamakan kesetaraan.
+                  <p className="text-lg lg:text-xl text-slate-200 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-light">
+                    Platform teknologi terdepan yang menghubungkan talenta terbaik dengan perusahaan progresif. Membangun ekosistem kerja yang inklusif, berkelanjutan, dan mengutamakan kesetaraan.
                   </p>
                 </header>
                 <div
@@ -223,42 +519,34 @@ const LandingPage = () => {
                 Metodologi Profesional
               </h2>
               <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto font-light">
-                Pendekatan sistematis dan terstruktur untuk memastikan pengalaman
-                yang optimal dan hasil yang berkelanjutan
+                Pendekatan sistematis dan terstruktur untuk memastikan pengalaman yang optimal dan hasil yang berkelanjutan
               </p>
             </header>
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
-              role="list"
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" role="list">
               {[
                 {
                   step: "01",
                   icon: <UserPlus className="w-8 h-8" />,
-                  title: "Registration & Onboarding",
-                  description:
-                    "Proses registrasi yang komprehensif dengan validasi identitas dan assessment kemampuan",
+                  title: "Registrasi & Orientasi",
+                  description: "Proses registrasi yang komprehensif dengan validasi identitas dan assessment kemampuan",
                 },
                 {
                   step: "02",
                   icon: <FileText className="w-8 h-8" />,
-                  title: "Profile Development",
-                  description:
-                    "Pengembangan profil profesional dengan bantuan konsultan karier bersertifikat",
+                  title: "Pengembangan Profil",
+                  description: "Pengembangan profil profesional dengan bantuan konsultan karier bersertifikat",
                 },
                 {
                   step: "03",
                   icon: <Search className="w-8 h-8" />,
-                  title: "Intelligent Matching",
-                  description:
-                    "Sistem AI yang mencocokkan kandidat dengan peluang berdasarkan kompatibilitas holistik",
+                  title: "Pencocokan Cerdas",
+                  description: "Sistem AI yang mencocokkan kandidat dengan peluang berdasarkan kompatibilitas holistik",
                 },
                 {
                   step: "04",
                   icon: <Send className="w-8 h-8" />,
-                  title: "Application & Follow-up",
-                  description:
-                    "Proses aplikasi terintegrasi dengan tracking real-time dan support berkelanjutan",
+                  title: "Aplikasi & Tindak Lanjut",
+                  description: "Proses aplikasi terintegrasi dengan tracking real-time dan support berkelanjutan",
                 },
               ].map((item, index) => (
                 <article
@@ -312,41 +600,33 @@ const LandingPage = () => {
                 Layanan Profesional Kami
               </h2>
               <p className="text-xl text-slate-200 max-w-3xl mx-auto font-light">
-                Menyediakan solusi end-to-end untuk menciptakan ekosistem kerja
-                yang berkelanjutan dan inklusif bagi semua kalangan
+                Menyediakan solusi end-to-end untuk menciptakan ekosistem kerja yang berkelanjutan dan inklusif bagi semua kalangan
               </p>
             </header>
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
-              role="list"
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" role="list">
               {[
                 {
                   icon: <Users className="w-8 h-8" />,
                   title: "Penyandang Disabilitas",
-                  description:
-                    "Solusi komprehensif untuk penyandang disabilitas dalam mengembangkan karier profesional yang berkelanjutan",
+                  description: "Solusi komprehensif untuk penyandang disabilitas dalam mengembangkan karier profesional yang berkelanjutan",
                   category: "INDIVIDU",
                 },
                 {
                   icon: <Building2 className="w-8 h-8" />,
                   title: "Perusahaan",
-                  description:
-                    "Program kemitraan strategis untuk perusahaan dalam membangun workforce yang beragam dan inklusif",
+                  description: "Program kemitraan strategis untuk perusahaan dalam membangun workforce yang beragam dan inklusif",
                   category: "Mitra Perusahaan",
                 },
                 {
                   icon: <FileText className="w-8 h-8" />,
                   title: "Hubungan Pemerintah",
-                  description:
-                    "Kolaborasi dengan Disnaker dalam implementasi kebijakan ketenagakerjaan yang progresif",
+                  description: "Kolaborasi dengan Disnaker dalam implementasi kebijakan ketenagakerjaan yang progresif",
                   category: "Pemerintah",
                 },
                 {
                   icon: <Shield className="w-8 h-8" />,
                   title: "Komnas Disabilitas",
-                  description:
-                    "Kerjasama dengan Komnas Disabilitas untuk memastikan perlindungan hak dan standar industri",
+                  description: "Kerjasama dengan Komnas Disabilitas untuk memastikan perlindungan hak dan standar industri",
                   category: "Regulasi",
                 },
               ].map((service, index) => (
@@ -394,36 +674,37 @@ const LandingPage = () => {
             </header>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {loadingJobs ? (
-                <div className="col-span-3 text-center py-8 text-slate-600 dark:text-slate-400">
-                  Memuat data...
-                </div>
+                <>
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <JobCardSkeleton key={index} />
+                  ))}
+                </>
               ) : errorJobs ? (
-                <div className="col-span-3 text-center py-8 text-red-500">
-                  {errorJobs}
-                </div>
+                <EmptyState onRefresh={fetchJobs} />
               ) : jobs.length > 0 ? (
                 jobs.slice(0, 6).map((job) => (
                   <div key={job.id}>
                     <JobCard
                       job={{
-                        id: job.id,
+                        id: job.id.toString(),
                         title: job.job_title,
                         company: job.perusahaan_profile?.nama_perusahaan ?? "Unknown Company",
                         location: job.location,
-                        salary: job.salary_range,
+                        salary: job.salary_range || "Kompetitif",
                         type: job.job_type,
                         description: job.description,
                         requirements: job.requirements?.split("\n") ?? [],
-                        logo: job.perusahaan_profile?.logo ?? "",
+                        logo: getCompanyLogoUrl(job.perusahaan_profile?.logo, job.perusahaan_profile?.nama_perusahaan),
+                        skills: job.skills,
+                        accessibility: job.disabilitas.length > 0 ? job.disabilitas.map(d => d.kategori_disabilitas).join(", ") : undefined,
+                        deadline: job.application_deadline,
                       }}
                       urlDetail={`/cari-kerja/detail/${job.id}`}
                     />
                   </div>
                 ))
               ) : (
-                <div className="col-span-3 text-center py-8 text-slate-600 dark:text-slate-400">
-                  Tidak ada peluang tersedia
-                </div>
+                <EmptyState onRefresh={fetchJobs} />
               )}
             </div>
             <div className="text-center mt-16">
@@ -438,11 +719,11 @@ const LandingPage = () => {
           aria-labelledby="testimonials-heading"
         >
           <div className="absolute inset-0 z-0">
-            <Image
+            <img
               src="/images/disabilitas3.jpg"
-              alt="Testimonials background"
-              fill
-              className="object-cover"
+              alt=""
+              className="w-full h-full object-cover"
+              role="presentation"
             />
             <div className="absolute inset-0 bg-slate-900/50 dark:bg-slate-900/60"></div>
           </div>
@@ -452,36 +733,56 @@ const LandingPage = () => {
                 <h2
                   id="testimonials-heading"
                   className="text-3xl sm:text-4xl font-bold text-slate-200 dark:text-white mb-4 tracking-tight"
+                  aria-label="Testimoni Profesional"
                 >
                   Testimoni Profesional
                 </h2>
-                <p className="text-xl text-slate-200 dark:text-slate-400 max-w-md font-light">
-                  Perspektif dari para profesional yang telah merasakan dampak
-                  transformatif yang luar biasa dari platform kami, memberikan
-                  wawasan berharga tentang bagaimana solusi inovatif kami telah
-                  mengubah cara mereka menavigasi dunia karier dan mencapai
-                  kesuksesan.
+                <p
+                  className="text-xl text-slate-200 dark:text-slate-400 max-w-md font-light"
+                  aria-label="Perspektif dari para profesional yang telah merasakan dampak transformatif yang luar biasa dari platform kami, memberikan wawasan berharga tentang bagaimana solusi inovatif kami telah mengubah cara mereka menavigasi dunia karier dan mencapai kesuksesan."
+                >
+                  Perspektif dari para profesional yang telah merasakan dampak transformatif yang luar biasa dari platform kami, memberikan wawasan berharga tentang bagaimana solusi inovatif kami telah mengubah cara mereka menavigasi dunia karier dan mencapai kesuksesan.
                 </p>
               </header>
-              <div role="region" aria-label="Carousel testimoni profesional" aria-live="polite">
+              <div
+                className="relative max-w-2xl mx-auto lg:mx-0"
+                role="region"
+                aria-label="Carousel testimoni profesional"
+                aria-live="polite"
+              >
                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div
+                      className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6"
+                      aria-label={`Avatar ${testimonials[currentTestimonial].name}`}
+                    >
                       <span className="text-slate-700 dark:text-slate-300 font-bold text-xl">
                         {testimonials[currentTestimonial].avatar}
                       </span>
                     </div>
-                    <blockquote className="text-lg text-slate-900 dark:text-white font-light leading-relaxed mb-6 italic pl-12 pr-12">
+                    <blockquote
+                      className="text-lg text-slate-900 dark:text-white font-light leading-relaxed mb-6 italic pl-12 pr-12"
+                      aria-label={`Testimoni: ${testimonials[currentTestimonial].content}`}
+                    >
                       "{testimonials[currentTestimonial].content}"
                     </blockquote>
                     <div className="space-y-2">
-                      <div className="text-base font-semibold text-slate-900 dark:text-white">
+                      <div
+                        className="text-base font-semibold text-slate-900 dark:text-white"
+                        aria-label={`Nama: ${testimonials[currentTestimonial].name}`}
+                      >
                         {testimonials[currentTestimonial].name}
                       </div>
-                      <div className="text-slate-600 dark:text-slate-400 font-medium text-sm">
+                      <div
+                        className="text-slate-600 dark:text-slate-400 font-medium text-sm"
+                        aria-label={`Posisi: ${testimonials[currentTestimonial].role}`}
+                      >
                         {testimonials[currentTestimonial].role}
                       </div>
-                      <div className="text-sm text-slate-500 dark:text-slate-500">
+                      <div
+                        className="text-sm text-slate-500 dark:text-slate-500"
+                        aria-label={`Perusahaan: ${testimonials[currentTestimonial].company}`}
+                      >
                         {testimonials[currentTestimonial].company}
                       </div>
                     </div>
@@ -492,14 +793,14 @@ const LandingPage = () => {
                   className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
                   aria-label="Testimoni sebelumnya"
                 >
-                  <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" aria-hidden="true" />
                 </button>
                 <button
                   onClick={nextTestimonial}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
                   aria-label="Testimoni selanjutnya"
                 >
-                  <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" aria-hidden="true" />
                 </button>
               </div>
             </div>
