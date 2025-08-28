@@ -1,10 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import Image from "next/image"; // Use Next.js Image component
+import Image from "next/image";
 import Navbar from "@/components/landing-page/Navbar";
 import Footer from "@/components/landing-page/Footer";
 import JobCard from "@/components/company/JobCard";
-import testimonialsData from "@/data/testimonials.json";
 import apiBissaKerja from "@/lib/api-bissa-kerja";
 import {
   Users,
@@ -37,18 +36,9 @@ interface Job {
 interface Company {
   id: number;
   nama_perusahaan: string;
-  industri: string;
-  alamat_lengkap?: string;
-  province_cd?: number;
-  regency_cd?: number;
-  deskripsi?: string;
   logo?: string;
-  link_website?: string;
-  no_telp?: string;
-  tahun_berdiri?: number;
-  jumlah_karyawan?: number;
-  visi?: string;
-  misi?: string;
+  industri: string;
+  province_id?: number;
 }
 
 interface Testimonial {
@@ -59,39 +49,12 @@ interface Testimonial {
   avatar: string;
 }
 
-// Interface for API response (from ManagementCompanyPage)
 interface CompanyApiResponse {
   id: number;
-  logo: string;
   nama_perusahaan: string;
+  logo?: string;
   industri: string;
-  tahun_berdiri: string;
-  jumlah_karyawan: string;
-  province_id: string;
-  regencie_id: string;
-  deskripsi: string;
-  no_telp: string;
-  link_website: string;
-  alamat_lengkap: string;
-  visi: string;
-  misi: string;
-  nilai_nilai: string;
-  sertifikat: string;
-  bukti_wajib_lapor: string;
-  nib: string;
-  linkedin: string;
-  instagram: string;
-  facebook: string;
-  twitter: string;
-  youtube: string;
-  tiktok: string;
-  status_verifikasi: string;
-  user_id: number;
-  created_at: string;
-  updated_at: string;
-  user: { id: number; name: string; email: string; avatar?: string; };
-  province: { id: string; name: string; };
-  regency: { id: string; name: string; };
+  province_id?: string;
 }
 
 const LandingPage = () => {
@@ -101,20 +64,19 @@ const LandingPage = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [errorJobs, setErrorJobs] = useState<string | null>(null);
-  
-  // State untuk companies dari database
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [errorCompanies, setErrorCompanies] = useState<string | null>(null);
-  
-  const testimonials: Testimonial[] = testimonialsData;
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loadingTestimonials, setLoadingTestimonials] = useState(true);
+  const [errorTestimonials, setErrorTestimonials] = useState<string | null>(null);
 
   // Fetch jobs from backend
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setLoadingJobs(true);
-        const response = await apiBissaKerja.get("/company/job-vacancies");
+        const response = await apiBissaKerja.get("post_lowongan");
         if (response.data.success) {
           setJobs(response.data.data || []);
         } else {
@@ -131,32 +93,22 @@ const LandingPage = () => {
     fetchJobs();
   }, []);
 
-  // Transform API response to Company interface
+  // Fetch companies from backend
   const transformApiResponseToCompany = (apiData: CompanyApiResponse[]): Company[] => {
     return apiData.map((item) => ({
       id: item.id,
       nama_perusahaan: item.nama_perusahaan,
-      industri: item.industri,
-      alamat_lengkap: item.alamat_lengkap,
-      province_cd: Number(item.province_id),
-      regency_cd: Number(item.regencie_id),
-      deskripsi: item.deskripsi,
       logo: item.logo,
-      link_website: item.link_website,
-      no_telp: item.no_telp,
-      tahun_berdiri: Number(item.tahun_berdiri),
-      jumlah_karyawan: Number(item.jumlah_karyawan),
-      visi: item.visi,
-      misi: item.misi,
+      industri: item.industri,
+      province_id: item.province_id ? Number(item.province_id) : undefined,
     }));
   };
 
-  // Fetch companies from backend (using endpoint and transform from ManagementCompanyPage)
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
         setLoadingCompanies(true);
-        const response = await apiBissaKerja.get("account-management/get-company-by-location");
+        const response = await apiBissaKerja.get("/perusahaan_profiles");
         if (response.data && response.data.success && Array.isArray(response.data.data)) {
           const transformedCompanies = transformApiResponseToCompany(response.data.data);
           setCompanies(transformedCompanies);
@@ -178,6 +130,28 @@ const LandingPage = () => {
       }
     };
     fetchCompanies();
+  }, []);
+
+  // Fetch testimonials from backend
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        setLoadingTestimonials(true);
+        const response = await apiBissaKerja.get("/testimonials");
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          setTestimonials(response.data.data);
+        } else {
+          setTestimonials([]);
+          setErrorTestimonials("Tidak ada data testimoni ditemukan");
+        }
+      } catch (err) {
+        console.error("Error fetching testimonials:", err);
+        setErrorTestimonials("Gagal mengambil data testimoni");
+      } finally {
+        setLoadingTestimonials(false);
+      }
+    };
+    fetchTestimonials();
   }, []);
 
   // Initialize theme from localStorage or system preference
@@ -205,18 +179,20 @@ const LandingPage = () => {
 
   // Testimonial navigation
   const nextTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    setCurrentTestimonial((prev) => (prev + 1) % Math.max(testimonials.length, 1));
   };
 
   const prevTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+    setCurrentTestimonial((prev) => (prev - 1 + Math.max(testimonials.length, 1)) % Math.max(testimonials.length, 1));
   };
 
   // Auto-slide testimonials
   useEffect(() => {
-    const interval = setInterval(nextTestimonial, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (testimonials.length > 0) {
+      const interval = setInterval(nextTestimonial, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [testimonials.length]);
 
   // Function to generate company logo from first letter
   const getCompanyLogo = (companyName: string) => {
@@ -564,43 +540,61 @@ const LandingPage = () => {
                 </p>
               </header>
               <div role="region" aria-label="Carousel testimoni profesional" aria-live="polite">
-                <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <span className="text-slate-700 dark:text-slate-300 font-bold text-xl">
-                        {testimonials[currentTestimonial].avatar}
-                      </span>
-                    </div>
-                    <blockquote className="text-lg text-slate-900 dark:text-white font-light leading-relaxed mb-6 italic pl-12 pr-12">
-                      "{testimonials[currentTestimonial].content}"
-                    </blockquote>
-                    <div className="space-y-2">
-                      <div className="text-base font-semibold text-slate-900 dark:text-white">
-                        {testimonials[currentTestimonial].name}
+                {loadingTestimonials ? (
+                  <div className="text-center py-8 text-slate-200 dark:text-slate-400">
+                    Memuat data testimoni...
+                  </div>
+                ) : errorTestimonials ? (
+                  <div className="text-center py-8 text-red-500">
+                    {errorTestimonials}
+                  </div>
+                ) : testimonials.length > 0 ? (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-slate-700 dark:text-slate-300 font-bold text-xl">
+                          {testimonials[currentTestimonial].avatar}
+                        </span>
                       </div>
-                      <div className="text-slate-600 dark:text-slate-400 font-medium text-sm">
-                        {testimonials[currentTestimonial].role}
-                      </div>
-                      <div className="text-sm text-slate-500 dark:text-slate-500">
-                        {testimonials[currentTestimonial].company}
+                      <blockquote className="text-lg text-slate-900 dark:text-white font-light leading-relaxed mb-6 italic pl-12 pr-12">
+                        "{testimonials[currentTestimonial].content}"
+                      </blockquote>
+                      <div className="space-y-2">
+                        <div className="text-base font-semibold text-slate-900 dark:text-white">
+                          {testimonials[currentTestimonial].name}
+                        </div>
+                        <div className="text-slate-600 dark:text-slate-400 font-medium text-sm">
+                          {testimonials[currentTestimonial].role}
+                        </div>
+                        <div className="text-sm text-slate-500 dark:text-slate-500">
+                          {testimonials[currentTestimonial].company}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <button
-                  onClick={prevTestimonial}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-                  aria-label="Testimoni sebelumnya"
-                >
-                  <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                </button>
-                <button
-                  onClick={nextTestimonial}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-                  aria-label="Testimoni selanjutnya"
-                >
-                  <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                </button>
+                ) : (
+                  <div className="text-center py-8 text-slate-200 dark:text-slate-400">
+                    Tidak ada testimoni tersedia
+                  </div>
+                )}
+                {testimonials.length > 0 && (
+                  <>
+                    <button
+                      onClick={prevTestimonial}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                      aria-label="Testimoni sebelumnya"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                    </button>
+                    <button
+                      onClick={nextTestimonial}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                      aria-label="Testimoni selanjutnya"
+                    >
+                      <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -639,8 +633,8 @@ const LandingPage = () => {
                     <div className="flex items-center space-x-4 mb-6">
                       <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
                         {company.logo ? (
-                          <img 
-                            src={company.logo} 
+                          <img
+                            src={company.logo}
                             alt={`Logo ${company.nama_perusahaan}`}
                             className="w-12 h-12 object-contain rounded"
                           />
@@ -655,34 +649,19 @@ const LandingPage = () => {
                           {company.nama_perusahaan}
                         </h3>
                         <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm mb-1">
-                          <MapPin className="w-4 h-4 mr-1" /> 
-                          {company.alamat_lengkap || "Lokasi tidak tersedia"}
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {company.province_id ? `Provinsi ID: ${company.province_id}` : "Lokasi tidak tersedia"}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-500">
                           {company.industri}
                         </div>
                       </div>
                     </div>
-                    {company.deskripsi && (
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
-                        {company.deskripsi}
-                      </p>
-                    )}
                     <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
                       <div className="flex items-center justify-between">
                         <button className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-sm transition-colors duration-300">
                           Lihat Kemitraan →
                         </button>
-                        {company.link_website && (
-                          <a 
-                            href={company.link_website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors duration-300"
-                          >
-                            Website
-                          </a>
-                        )}
                       </div>
                     </div>
                   </article>
@@ -693,7 +672,6 @@ const LandingPage = () => {
                 </div>
               )}
             </div>
-            
             {companies.length > 6 && (
               <div className="text-center mt-16">
                 <button className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-lg text-lg font-medium shadow-md hover:shadow-lg transition-all">
